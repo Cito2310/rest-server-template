@@ -2,17 +2,14 @@ import { Request, Response } from "express";
 import bcryptjs from "bcryptjs";
 
 import { User } from "./userModels";
-import { Task } from '../project_task_api/taskModels';
-
-import { IBodyCreateUser, IBodyChangeDataUser } from '../types/routeBodyUser';
 
 import { generatorJWT } from '../helpers/generatorJWT';
-import { ProjectTask } from '../project_task_api/projectTaskModels';
+import { IInputBodyUser, IInputBodyChangeDataUser } from '../types/InputBodyTypes';
 
 // Create User
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { _id, ...userData } = req.body as IBodyCreateUser;
+        const { _id, ...userData } = req.body as IInputBodyUser;
     
         // find user exist with email or username
         const [ existUsername, existEmail ] = await Promise.all([
@@ -51,7 +48,7 @@ export const createUser = async (req: Request, res: Response) => {
 // ChangeDataUser - Need Token
 export const changeDataUser = async (req: Request, res: Response) => {
     try {
-        const { _id: id, ...newData } = req.body as IBodyChangeDataUser;
+        const { _id: id, ...newData } = req.body as IInputBodyChangeDataUser;
         const { _id, username, email, password } = req.user;
 
 

@@ -1,13 +1,11 @@
-import { model, Schema, Types } from "mongoose";
-import { IUser } from '../types/modelMongoDB';
+import { model, Schema } from "mongoose";
+import { IUserMongo } from '../types/TypesMoongose';
 
-const userSchema = new Schema<IUser>({
+
+const userSchema = new Schema<IUserMongo>({
     email: {type: String, required: true, lowercase: true},
     password: {type: String, required: true},
     username: {type: String, required: true},
-    project: [
-        { type: Schema.Types.ObjectId, ref: "ProjectTask" }
-    ],
 })
 
 userSchema.methods.toJSON = function() {
