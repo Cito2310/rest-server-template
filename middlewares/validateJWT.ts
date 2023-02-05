@@ -1,7 +1,16 @@
-import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+
 import { User } from '../users_api/userModels';
-import { ITokenUser } from '../types/tokenUser';
+
+import { NextFunction, Request, Response } from 'express';
+import { Types } from 'mongoose';
+
+
+export interface ITokenUser {
+    id: Types.ObjectId
+}
+
+
 
 export const validateJWT = async (
         req: Request, 
