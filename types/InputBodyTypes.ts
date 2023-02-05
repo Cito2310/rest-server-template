@@ -1,9 +1,14 @@
 import { IUserMongo } from './TypesMoongose';
 
-export interface IInputBodyUser extends IUserMongo {
+export interface IBodyUser extends IUserMongo {
     _id?: unknown
 }
 
-export interface IInputBodyChangeDataUser extends IUserMongo {
+export interface IBodyChangeDataUser extends IUserMongo {
     _id?: unknown
+}
+
+export interface IBodyLogin extends IUserMongo {
+    username: string,
+    password: string,
 }

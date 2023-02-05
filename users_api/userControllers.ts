@@ -4,22 +4,15 @@ import bcryptjs from "bcryptjs";
 import { User } from "./userModels";
 
 import { generatorJWT } from '../helpers/generatorJWT';
-import { IInputBodyUser, IInputBodyChangeDataUser } from '../types/InputBodyTypes';
+
+import { IBodyUser, IBodyChangeDataUser, IBodyLogin } from '../types/InputBodyTypes';
+
+
 
 // Create User
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { _id, ...userData } = req.body as IInputBodyUser;
-    
-        // find user exist with email or username
-        const [ existUsername, existEmail ] = await Promise.all([
-            User.findOne({ username: userData.username }),
-            User.findOne({ email: userData.email }),
-        ])
-    
-        // check username or email not exist
-        if ( existUsername ) return res.status(400).json([{msg: "0010 - username already exists"}])
-        if ( existEmail ) return res.status(400).json([{msg: "0011 - email is already registered"}])
+        const { _id, ...userData } = req.body as IBodyUser;
     
         // encrypt password
         const salt = bcryptjs.genSaltSync();
@@ -36,42 +29,16 @@ export const createUser = async (req: Request, res: Response) => {
         return res.json({ user: newUser, token });
         
 
-    } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            msg: "1500 - unexpected server error"
-        })
-    }
+    } catch (error) { return res.status(500).json({ msg: "1500 - unexpected server error" })}
 }
 
 
 // ChangeDataUser - Need Token
 export const changeDataUser = async (req: Request, res: Response) => {
     try {
-        const { _id: id, ...newData } = req.body as IInputBodyChangeDataUser;
-        const { _id, username, email, password } = req.user;
+        const { _id: id, ...newData } = req.body as IBodyChangeDataUser;
+        const { _id } = req.user;
 
-
-        // C H E C K S
-        // check user data not is same ( email - password - username )
-        if ( newData.email && email === newData.email ) return res.status(400).json({msg: "1400 - Equal email"});
-
-        const validPassword = bcryptjs.compareSync( newData.password || "", password );
-        if ( newData.password && validPassword ) return res.status(400).json({msg: "2400 - Equal password"});
-
-        if ( newData.username && username === newData.username ) return res.status(400).json({msg: "3400 - Equal username"});
-
-        // check user data already exist
-        const [ existUsername, existEmail ] = await Promise.all([
-            User.findOne({ username: newData.username }),
-            User.findOne({ email: newData.email }),
-        ])
-
-        if ( existEmail ) return res.status(400).json({msg: "4400 - This email is already registered"});
-        if ( existUsername ) return res.status(400).json({msg: "5400 - This username is already registered"});
-
-
-        // CHANGE AND SAVE USER
         // change password && encrypt password
         if ( newData.password ) {
             const salt = bcryptjs.genSaltSync()
@@ -79,95 +46,59 @@ export const changeDataUser = async (req: Request, res: Response) => {
         }
 
         // find user and update
-        let userChanged: any;
-        try {
-            userChanged = await User.findByIdAndUpdate( _id, newData );
-        } catch (error) {
-            return res.status(404).json({ msg: "1404 - User not exist" });
-        }
+        const userChanged = await User.findByIdAndUpdate( _id, newData );
 
         // save user data
-        await userChanged.save();
+        await userChanged?.save();
 
         // return
         return res.status(204).json()
 
 
-    } catch (error) {
-        return res.status(500).json({
-            msg: "1500 - unexpected server error"
-        })
-    }
+    } catch (error) { return res.status(500).json({ msg: "1500 - unexpected server error" })}
 }
 
 
 // Get User - Need Token
 export const getUser = async (req: Request, res: Response) => {
     try {
-        const user = await User.findById(req.user._id);
-        if ( !user ) return res.status(404).json({ msg: "9404 - user not found" });
-        return res.status(200).json(user);
-        
+        return res.status(200).json(req.user);
 
-    } catch (error) {
-        return res.status(500).json({
-            msg: "1500 - unexpected server error"
-        })
-    }
+
+    } catch (error) { return res.status(500).json({ msg: "1500 - unexpected server error" })}
 }
 
 
 // Delete User - Need Token
 export const deleteUser = async (req: Request, res: Response) => {
     try {
-        // check exist user
-        const user = await User.findById(req.user._id).populate("project");
-        if ( !user ) return res.status(404).json({ msg: "9404 - user not found" });
-
-        // delete project and task
-        user.project.map( async( project) => {
-            const arrayPromiseTasks = project.tasks.map( task => {
-                return Task.findByIdAndDelete( task._id )
-            });
-            await Promise.all( arrayPromiseTasks ); // delete task
-            await ProjectTask.findByIdAndDelete( project._id ); // delete project
-        })
-
-        // delete user
         await User.findByIdAndDelete(req.user._id);
         return res.status(204).json();
 
 
-    } catch (error) {
-        return res.status(500).json({
-            msg: "1500 - unexpected server error"
-        })
-    }
+    } catch (error) { return res.status(500).json({ msg: "1500 - unexpected server error" })}
 }
 
 
-// Login User - Need Token
+// Login User
 export const loginUser = async (req: Request, res: Response) => {
     try {
-        const { username, password } = req.body;
+        const { username, password } = req.body as IBodyLogin;
 
-        // CHECK DATA
-        // check username
-        const existUser = await User.findOne({ username });
-        if ( !existUser ) return res.status(400).json({ msg: "9753 - login invalid" });
+        // get user with username
+        const user = await User.findOne({ username });
+        
+        // check user exist
+        if ( !user ) return res.status(400).json({ msg: "login invalid" });
 
-        // check password
-        const samePassword = bcryptjs.compareSync( password, existUser.password );
-        if ( !samePassword ) return res.status(400).json({ msg: "9753 - login invalid" })
+        // check password is equal
+        const samePassword = bcryptjs.compareSync( password, user.password );
+        if ( !samePassword ) return res.status(400).json({ msg: "login invalid" })
 
         // generate JWT and return
-        const token: string = await generatorJWT({ id: existUser._id });
+        const token: string = await generatorJWT({ id: user._id });
         return res.status(200).json({ token });
 
 
-    } catch (error) {
-        return res.status(500).json({
-            msg: "1500 - unexpected server error"
-        })
-    }
+    } catch (error) { return res.status(500).json({ msg: "1500 - unexpected server error" })}
 }
